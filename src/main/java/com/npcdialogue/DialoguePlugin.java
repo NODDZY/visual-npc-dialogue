@@ -1,4 +1,4 @@
-package com.example;
+package com.npcdialogue;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
@@ -14,15 +14,15 @@ import net.runelite.client.plugins.PluginDescriptor;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Example"
+	name = "AudioVisual NPC Dialogue"
 )
-public class ExamplePlugin extends Plugin
+public class DialoguePlugin extends Plugin
 {
 	@Inject
 	private Client client;
 
 	@Inject
-	private ExampleConfig config;
+	private DialogueConfig config;
 
 	@Override
 	protected void startUp() throws Exception
@@ -46,8 +46,8 @@ public class ExamplePlugin extends Plugin
 	}
 
 	@Provides
-	ExampleConfig provideConfig(ConfigManager configManager)
+	DialogueConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(ExampleConfig.class);
+		return configManager.getConfig(DialogueConfig.class);
 	}
 }
