@@ -1,9 +1,13 @@
 .gradle
-build
-.idea/
+.idea
+.vscode
 .project
-.settings/
+.settings
 .classpath
+
+build/
+nbproject/
+bin/
+
 nbactions.xml
 nb-configuration.xml
-nbproject/
