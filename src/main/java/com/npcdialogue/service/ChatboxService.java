@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 
 @Slf4j
 public class ChatboxService {
-
     @Inject
     private DialogueConfig config;
 
@@ -24,8 +23,7 @@ public class ChatboxService {
     /**
      * Adds NPC/Player dialogue to chatbox
      */
-    public void addDialogMessage(Dialogue dialogue)
-    {
+    public void addDialogMessage(Dialogue dialogue) {
         final ChatMessageBuilder chatMessage = new ChatMessageBuilder()
                 .append(config.nameColor(), trimName(dialogue.getName()))
                 .append(config.nameColor(), ": ")
@@ -36,11 +34,10 @@ public class ChatboxService {
                 .runeLiteFormattedMessage(chatMessage.build())
                 .build());
 
-        log.debug("Chatbox dialogue built: " + dialogue);
+        log.debug("Chatbox dialogue built and queued: " + dialogue);
     }
 
-    private String trimName(String name)
-    {
+    private String trimName(String name) {
         // Regex pattern to match parentheses and their contents at the end of the string
         Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
         Matcher matcher = pattern.matcher(name);

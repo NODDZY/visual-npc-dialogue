@@ -5,8 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class Dialogue
-{
+public class Dialogue {
     private final String name;
     private final String content;
 }
