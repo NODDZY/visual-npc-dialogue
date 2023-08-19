@@ -37,9 +37,6 @@ public class DialoguePlugin extends Plugin
 	// The last player dialogue
 	private Dialogue lastPlayerDialogue = null;
 
-	public DialoguePlugin() {
-	}
-
 	@Provides
 	DialogueConfig provideConfig(ConfigManager configManager)
 	{
