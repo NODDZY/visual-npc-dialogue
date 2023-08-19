@@ -1,19 +1,67 @@
 package com.npcdialogue;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.*;
 
-@ConfigGroup("example")
+import java.awt.Color;
+
+@ConfigGroup("dialogue")
 public interface DialogueConfig extends Config
 {
-	@ConfigItem(
-		keyName = "greeting",
-		name = "Welcome Greeting",
-		description = "The message to show to the user when they login"
+	@ConfigSection(
+			name = "Chatbox Dialogue",
+			description = "All options for displaying dialogue in the chatbox",
+			position = 0
 	)
-	default String greeting()
+	String chatDialogueSection = "chatDialogue";
+
+	@ConfigItem(
+		keyName = "displayChatboxNpcDialogue",
+		name = "NPC Dialog",
+		description = "Display NPC dialogue in the chatbox",
+		section = chatDialogueSection,
+		position = 0
+	)
+	default boolean displayChatboxNpcDialogue()
 	{
-		return "Hello";
+		return true;
 	}
+
+	@ConfigItem(
+			keyName = "displayChatboxPlayerDialogue",
+			name = "Player Dialog",
+			description = "Display player dialogue in the chatbox",
+			section = chatDialogueSection,
+			position = 1
+	)
+	default boolean displayChatboxPlayerDialogue()
+	{
+		return true;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "nameColor",
+			name = "Name Color",
+			description = "Select the display color for the name in the chatbox",
+			section = chatDialogueSection,
+			position = 2
+	)
+	default Color nameColor()
+	{
+		return Color.BLACK;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "contentColor",
+			name = "Text Color",
+			description = "Select the display color for the message text in the chatbox",
+			section = chatDialogueSection,
+			position = 3
+	)
+	default Color contentColor()
+	{
+		return Color.BLUE;
+	}
+
 }
