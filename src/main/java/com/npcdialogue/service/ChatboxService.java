@@ -9,6 +9,8 @@ import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 
 import javax.inject.Inject;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class ChatboxService {
@@ -25,7 +27,7 @@ public class ChatboxService {
     public void addDialogMessage(Dialogue dialogue)
     {
         final ChatMessageBuilder chatMessage = new ChatMessageBuilder()
-                .append(config.nameColor(), dialogue.getName())
+                .append(config.nameColor(), trimName(dialogue.getName()))
                 .append(config.nameColor(), ": ")
                 .append(config.contentColor(), dialogue.getContent());
 
@@ -35,6 +37,14 @@ public class ChatboxService {
                 .build());
 
         log.debug("Chatbox dialogue built: " + dialogue);
+    }
+
+    private String trimName(String name)
+    {
+        // Regex pattern to match parentheses and their contents at the end of the string
+        Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
+        Matcher matcher = pattern.matcher(name);
+        return matcher.replaceAll("");
     }
 
 }
