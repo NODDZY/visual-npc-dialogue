@@ -114,7 +114,7 @@ public class DialoguePlugin extends Plugin {
 
 		// Check if NPC has dialogue interface
 		// Check that dialogue box is valid and that it is not a duplicate
-		if (npcDialogue.getContent() != null && (lastNpcDialogue == null || !lastNpcDialogue.getContent().equals(npcDialogue.getContent()))) {
+		if (npcDialogue.getContent() != null && (lastNpcDialogue == null || !lastNpcDialogue.getContent().equals(npcDialogue.getContent())) && !ignoredActor(npcDialogue.getName())) {
 			log.debug("NPC Dialogue: " + npcDialogue);
 			lastNpcDialogue = npcDialogue;
 			lastPlayerDialogue = null;
@@ -176,6 +176,27 @@ public class DialoguePlugin extends Plugin {
 		String sanitizedText = (textWidget == null) ? null : Text.sanitizeMultilineText(textWidget.getText());
 
 		return new Dialogue(sanitizedName, sanitizedText);
+	}
+
+	/**
+	 * Check if actor is listed in the NPC ignore list
+	 *
+	 * @param name The NPC name to check
+	 * @return Whether actor is in the ignore list
+	 */
+	private boolean ignoredActor(String name) {
+		if (name == null || config.ignoredNPCs() == null) {
+			return false;
+		}
+
+		String[] names = config.ignoredNPCs().split(",");
+		for (String n : names) {
+			if (n.trim().equals(name) || chatboxService.trimName(n).equals(name)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

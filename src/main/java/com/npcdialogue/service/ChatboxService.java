@@ -37,7 +37,7 @@ public class ChatboxService {
         log.debug("Chatbox dialogue built and queued: " + dialogue);
     }
 
-    private String trimName(String name) {
+    public String trimName(String name) {
         // Regex pattern to match parentheses and their contents at the end of the string
         Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
         Matcher matcher = pattern.matcher(name);

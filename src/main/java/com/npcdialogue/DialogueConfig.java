@@ -7,16 +7,24 @@ import java.awt.Color;
 @ConfigGroup("dialogue")
 public interface DialogueConfig extends Config {
 	@ConfigSection(
+			name = "Ignore List",
+			description = "Custom exclusion list",
+			position = 0,
+			closedByDefault = true
+	)
+	String ignoreListSection = "ignoreList";
+
+	@ConfigSection(
 			name = "Chatbox Dialogue",
 			description = "All options for displaying dialogue in the chatbox",
-			position = 0
+			position = 1
 	)
 	String chatDialogueSection = "chatDialogue";
 
 	@ConfigSection(
 			name = "Overhead Dialogue",
 			description = "All options for displaying overhead dialogue",
-			position = 1
+			position = 2
 	)
 	String overheadDialogueSection = "overheadDialogue";
 
@@ -88,4 +96,14 @@ public interface DialogueConfig extends Config {
 		return true;
 	}
 
+	@ConfigItem(
+			keyName = "ignoredNPCs",
+			name = "Ignored NPCs",
+			description = "List of ignored NPCs, separated by commas",
+			position = 0,
+			section = ignoreListSection
+	)
+	default String ignoredNPCs() {
+		return "";
+	}
 }
