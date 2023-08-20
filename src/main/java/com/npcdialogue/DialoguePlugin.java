@@ -83,18 +83,14 @@ public class DialoguePlugin extends Plugin {
 	private void processDialogue(Dialogue dialogue) {
 		log.debug("Processing...");
 		// Check if player has dialogue interface
-		if (dialogue.getName().equals(client.getLocalPlayer().getName())
-				&& dialogue.getText() != null
-				&& (lastPlayerDialogue == null || !lastPlayerDialogue.getText().equals(dialogue.getText()))) {
+		if (dialogue.getName().equals(client.getLocalPlayer().getName()) && dialogue.getText() != null) {
 			log.debug("Player Dialogue: " + dialogue);
 			lastPlayerDialogue = dialogue;
 			lastNpcDialogue = null;
 			displayDialoguePlayer();
 		}
 		// Check if NPC has dialogue interface
-		else if (dialogue.getText() != null
-				&& (lastNpcDialogue == null || !lastNpcDialogue.getText().equals(dialogue.getText()))
-				&& !ignoredActor(dialogue.getName())) {
+		else if (dialogue.getText() != null && !ignoredActor(dialogue.getName())) {
 			log.debug("NPC Dialogue: " + dialogue);
 			lastNpcDialogue = dialogue;
 			lastPlayerDialogue = null;
