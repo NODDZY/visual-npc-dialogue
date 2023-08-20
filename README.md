@@ -1,6 +1,6 @@
 <div style="text-align:center; margin-top:10px;">
   <div style="margin-bottom:-15px">    
-    <img src="https://github.com/NODDZY/audiovisual-npc-dialogue/assets/40918636/feabbc76-77c6-4c26-9a94-52aac8402b4c" alt="AudioVisual NPC Dialogue">
+    <img src="https://github.com/NODDZY/audiovisual-npc-dialogue/assets/40918636/5b927c00-6b90-4ebe-a979-8f8afd5c7c91" alt="Visual NPC Dialogue">
   </div>
 
   <p>Adds dialogue to the chatbox and above NPCs heads.</p>
@@ -13,7 +13,7 @@
 ## Installation Instructions
 This plugin is designed for use within the open source OSRS client [RuneLite](https://runelite.net/) which is free to use.
 
-To install the plugin, start up the RuneLite client and search for the *AudioVisual NPC Dialogue* plugin in the Plugin Hub.\
+To install the plugin, start up the RuneLite client and search for the *Visual NPC Dialogue* plugin in the Plugin Hub.
 Detailed instructions on how to achieve this can be found on the [RuneLite wiki](https://github.com/runelite/runelite/wiki/Information-about-the-Plugin-Hub).
 
 ## Configuration

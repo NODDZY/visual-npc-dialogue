@@ -1,4 +1,4 @@
-package com.npcdialogue.service;
+package com.npcdialogue;
 
 import com.npcdialogue.model.Dialogue;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,7 @@ public class OverheadService {
 
     public void setOverheadTextNpc(Actor npc, Dialogue dialogue) {
         npc.setOverheadText(dialogue.getText());
-        log.debug("Set overhead dialogue for NPC: " + npc.getName() + " to: " + dialogue.getText());
+        log.debug("Set overhead dialogue for " + npc.getName() + " to: " + dialogue.getText());
     }
 
     public void setOverheadTextPlayer(Dialogue dialogue) {

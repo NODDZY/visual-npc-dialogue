@@ -2,8 +2,6 @@ package com.npcdialogue;
 
 import com.google.inject.Provides;
 import com.npcdialogue.model.Dialogue;
-import com.npcdialogue.service.ChatboxService;
-import com.npcdialogue.service.OverheadService;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
@@ -26,11 +24,14 @@ import java.util.Map;
 
 @Slf4j
 @PluginDescriptor(
-	name = "AudioVisual NPC Dialogue"
+	name = "Visual NPC Dialogue"
 )
 public class DialoguePlugin extends Plugin {
 	@Inject
 	private Client client;
+
+	@Inject
+	private Util util;
 
 	@Inject
 	private DialogueConfig config;
@@ -81,17 +82,14 @@ public class DialoguePlugin extends Plugin {
 	 * @param dialogue Dialogue to process and display
 	 */
 	private void processDialogue(Dialogue dialogue) {
-		log.debug("Processing...");
 		// Check if player has dialogue interface
 		if (dialogue.getName().equals(client.getLocalPlayer().getName()) && dialogue.getText() != null) {
-			log.debug("Player Dialogue: " + dialogue);
 			lastPlayerDialogue = dialogue;
 			lastNpcDialogue = null;
 			displayDialoguePlayer();
 		}
 		// Check if NPC has dialogue interface
-		else if (dialogue.getText() != null && !ignoredActor(dialogue.getName())) {
-			log.debug("NPC Dialogue: " + dialogue);
+		else if (dialogue.getText() != null && !util.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
 			lastNpcDialogue = dialogue;
 			lastPlayerDialogue = null;
 			displayDialogueNPC();
@@ -159,25 +157,6 @@ public class DialoguePlugin extends Plugin {
 			log.warn("Unable to find matching actor. Fallback to using latest NPC: " + lastInteractedActor.getName());
 			return lastInteractedActor;
 		}
-	}
-
-	/**
-	 * Check if actor is listed in the NPC ignore list
-	 *
-	 * @param name The NPC name to check
-	 * @return Whether actor is in the ignore list
-	 */
-	private boolean ignoredActor(String name) {
-		if (name == null || config.ignoredNPCs() == null) { return false; }
-		// Loop through Ignore List and look for NPC name
-		String[] names = config.ignoredNPCs().split(",");
-		for (String n : names) {
-			if (n.trim().equals(name) || chatboxService.trimName(name).equals(n)) {
-				log.debug("NPC found in ignore list: " + name);
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**
