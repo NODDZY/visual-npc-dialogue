@@ -29,11 +29,11 @@ public interface DialogueConfig extends Config {
 	String overheadDialogueSection = "overheadDialogue";
 
 	@ConfigItem(
-		keyName = "displayChatboxNpcDialogue",
-		name = "NPC Dialogue",
-		description = "Display NPC dialogue in the chatbox",
-		section = chatDialogueSection,
-		position = 0
+			keyName = "displayChatboxNpcDialogue",
+			name = "NPC Chatbox Dialogue",
+			description = "Display NPC dialogue in the chatbox",
+			section = chatDialogueSection,
+			position = 0
 	)
 	default boolean displayChatboxNpcDialogue() {
 		return true;
@@ -41,7 +41,7 @@ public interface DialogueConfig extends Config {
 
 	@ConfigItem(
 			keyName = "displayChatboxPlayerDialogue",
-			name = "Player Dialogue",
+			name = "Player Chatbox Dialogue",
 			description = "Display player dialogue in the chatbox",
 			section = chatDialogueSection,
 			position = 1
@@ -76,8 +76,8 @@ public interface DialogueConfig extends Config {
 
 	@ConfigItem(
 			keyName = "displayOverheadNpcDialogue",
-			name = "NPC Dialogue",
-			description = "Display NPC dialogue over the actor",
+			name = "NPC Overhead Dialogue",
+			description = "Display dialogue above the NPC",
 			section = overheadDialogueSection,
 			position = 0
 	)
@@ -87,7 +87,7 @@ public interface DialogueConfig extends Config {
 
 	@ConfigItem(
 			keyName = "displayOverheadPlayerDialogue",
-			name = "Player Dialogue",
+			name = "Player Overhead Dialogue",
 			description = "Display player dialogue overhead",
 			section = overheadDialogueSection,
 			position = 1
