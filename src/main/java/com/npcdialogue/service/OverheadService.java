@@ -13,13 +13,13 @@ public class OverheadService {
     private Client client;
 
     public void setOverheadTextNpc(Actor npc, Dialogue dialogue) {
-        npc.setOverheadText(dialogue.getContent());
-        log.debug("Set overhead dialogue for NPC: " + npc.getName() + " to: " + dialogue.getContent());
+        npc.setOverheadText(dialogue.getText());
+        log.debug("Set overhead dialogue for NPC: " + npc.getName() + " to: " + dialogue.getText());
     }
 
     public void setOverheadTextPlayer(Dialogue dialogue) {
-        client.getLocalPlayer().setOverheadText(dialogue.getContent());
-        log.debug("Set overhead dialogue for player to: " + dialogue.getContent());
+        client.getLocalPlayer().setOverheadText(dialogue.getText());
+        log.debug("Set overhead dialogue for player to: " + dialogue.getText());
     }
 
     public void clearOverheadText(Actor actor) {

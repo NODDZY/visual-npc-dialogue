@@ -6,14 +6,13 @@ import com.npcdialogue.service.ChatboxService;
 import com.npcdialogue.service.OverheadService;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.InteractingChanged;
-import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetID;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -60,39 +59,136 @@ public class DialoguePlugin extends Plugin {
 	}
 
 	/**
-	 * Check for dialogue every tick
-	 * Also check overhead text duration
+	 * Looks for chat messages, turns it into {@link Dialogue} object and starts dialogue process
+	 * @param event Chat Message with type=DIALOG
 	 */
 	@Subscribe
-	public void onGameTick(GameTick event) {
-		// If the dialogue interface is displayed
-		if (getWidgetDialogue()) {
-			// If chatbox dialogue is set in config send dialogue in chat
-			if (lastNpcDialogue != null && config.displayChatboxNpcDialogue()) {
-				chatboxService.addDialogMessage(lastNpcDialogue);
-			}
-			if (lastPlayerDialogue != null && config.displayChatboxPlayerDialogue()) {
-				chatboxService.addDialogMessage(lastPlayerDialogue);
-			}
+	public void onChatMessage(ChatMessage event) {
+		if (event.getType() == ChatMessageType.DIALOG) {
+			String[] chat = event.getMessage().split("\\|");
+			String name = Text.sanitizeMultilineText(chat[0]);
+			String message = Text.sanitizeMultilineText(chat[1]);
 
-			// If overhead dialogue is set in config set overhead dialogue
-			// Also add actor/timestamp to lastActorOverheadTickTime map
-			if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
-				if (lastInteractedActor.getName() == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
-					Actor npc = findActor();
-					overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
-					lastActorOverheadTickTime.put(npc, client.getTickCount());
-				} else {
-					overheadService.setOverheadTextNpc(lastInteractedActor, lastNpcDialogue);
-					lastActorOverheadTickTime.put(lastInteractedActor, client.getTickCount());
-				}
+			Dialogue dialogue = new Dialogue(name, message);
+			log.debug("Dialogue registered: " + dialogue);
+
+			processDialogue(dialogue);
+		}
+	}
+
+	/**
+	 * Looks at current dialogue and stores it if valid
+	 * @param dialogue Dialogue to process and display
+	 */
+	private void processDialogue(Dialogue dialogue) {
+		log.debug("Processing...");
+		// Check if player has dialogue interface
+		if (dialogue.getName().equals(client.getLocalPlayer().getName())
+				&& dialogue.getText() != null
+				&& (lastPlayerDialogue == null || !lastPlayerDialogue.getText().equals(dialogue.getText()))) {
+			log.debug("Player Dialogue: " + dialogue);
+			lastPlayerDialogue = dialogue;
+			lastNpcDialogue = null;
+			displayDialoguePlayer();
+		}
+		// Check if NPC has dialogue interface
+		else if (dialogue.getText() != null
+				&& (lastNpcDialogue == null || !lastNpcDialogue.getText().equals(dialogue.getText()))
+				&& !ignoredActor(dialogue.getName())) {
+			log.debug("NPC Dialogue: " + dialogue);
+			lastNpcDialogue = dialogue;
+			lastPlayerDialogue = null;
+			displayDialogueNPC();
+		}
+	}
+
+	/**
+	 * Displays player dialogue overhead or in chatbox based on configuration
+	 */
+	private void displayDialoguePlayer() {
+		// Chatbox dialogue
+		if (lastPlayerDialogue != null && config.displayChatboxPlayerDialogue()) {
+			chatboxService.addDialogMessage(lastPlayerDialogue);
+		}
+		// Overhead dialogue
+		if (lastPlayerDialogue != null && config.displayOverheadPlayerDialogue()) {
+			overheadService.setOverheadTextPlayer(lastPlayerDialogue);
+			lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
+		}
+	}
+
+	/**
+	 * Displays NPC dialogue overhead or in chatbox based on configuration
+	 */
+	private void displayDialogueNPC() {
+		// Chatbox dialogue
+		if (lastNpcDialogue != null && config.displayChatboxNpcDialogue()) {
+			chatboxService.addDialogMessage(lastNpcDialogue);
+		}
+		// Overhead dialogue
+		if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
+			// Check if NPC is saved in lastInteractedActor
+			if (lastInteractedActor == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
+				// If not -> find NPC
+				Actor npc = findActor();
+				overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
+				lastActorOverheadTickTime.put(npc, client.getTickCount());
+			} else {
+				overheadService.setOverheadTextNpc(lastInteractedActor, lastNpcDialogue);
+				lastActorOverheadTickTime.put(lastInteractedActor, client.getTickCount());
 			}
-			if (lastPlayerDialogue != null && config.displayOverheadPlayerDialogue()) {
-				overheadService.setOverheadTextPlayer(lastPlayerDialogue);
-				lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
+		}
+	}
+
+	/**
+	 * Finds actor based on NPC name. To be used when dialogue is not started by interaction.
+	 * @return The found actor or the last interacted actor
+	 */
+	private Actor findActor() {
+		NPC actor = null;
+		for (NPC npc : client.getNpcs()) {
+			// Check the NPC cache for actor based on NPC name
+			if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(lastNpcDialogue.getName())) {
+				actor = npc;
+				break;
 			}
 		}
 
+		if (actor != null) {
+			// Return the found actor if found
+			log.debug("Found matching actor: [" + actor.getId() + "] " + actor.getName());
+			return actor;
+		} else {
+			// Return the last interacted with NPC if not found
+			log.warn("Unable to find matching actor. Fallback to using latest NPC: " + lastInteractedActor.getName());
+			return lastInteractedActor;
+		}
+	}
+
+	/**
+	 * Check if actor is listed in the NPC ignore list
+	 *
+	 * @param name The NPC name to check
+	 * @return Whether actor is in the ignore list
+	 */
+	private boolean ignoredActor(String name) {
+		if (name == null || config.ignoredNPCs() == null) { return false; }
+		// Loop through Ignore List and look for NPC name
+		String[] names = config.ignoredNPCs().split(",");
+		for (String n : names) {
+			if (n.trim().equals(name) || chatboxService.trimName(name).equals(n)) {
+				log.debug("NPC found in ignore list: " + name);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Checks overhead text duration and clears overhead text if expired
+	 */
+	@Subscribe
+	public void onGameTick(GameTick event) {
 		for (Iterator<Actor> iterator = lastActorOverheadTickTime.keySet().iterator(); iterator.hasNext(); ) {
 			Actor actor = iterator.next();
 			// How long overhead text should last for
@@ -105,102 +201,7 @@ public class DialoguePlugin extends Plugin {
 	}
 
 	/**
-	 * Checks if dialogue interface widget is present and valid (containing a new dialogue message)
-     */
-	private boolean getWidgetDialogue() {
-		// Get message from dialogue interface widget
-		final Dialogue npcDialogue = getDialogueMessage(WidgetInfo.DIALOG_NPC_TEXT.getGroupId(), WidgetInfo.DIALOG_NPC_NAME.getChildId(), WidgetInfo.DIALOG_NPC_TEXT.getChildId());
-		final Dialogue playerDialogue = getDialogueMessage(WidgetID.DIALOG_PLAYER_GROUP_ID, WidgetInfo.DIALOG_NPC_NAME.getChildId(), WidgetInfo.DIALOG_NPC_TEXT.getChildId());
-
-		// Check if NPC has dialogue interface
-		// Check that dialogue box is valid and that it is not a duplicate
-		if (npcDialogue.getContent() != null && (lastNpcDialogue == null || !lastNpcDialogue.getContent().equals(npcDialogue.getContent())) && !ignoredActor(npcDialogue.getName())) {
-			log.debug("NPC Dialogue: " + npcDialogue);
-			lastNpcDialogue = npcDialogue;
-			lastPlayerDialogue = null;
-			return true;
-		}
-
-		// Check if player has dialogue interface
-		// Check that dialogue box is valid and that it is not a duplicate
-		if (playerDialogue.getContent() != null && (lastPlayerDialogue == null || !lastPlayerDialogue.getContent().equals(playerDialogue.getContent()))) {
-			log.debug("Player Dialogue: " + playerDialogue);
-			lastPlayerDialogue = playerDialogue;
-			lastNpcDialogue = null;
-			return true;
-		}
-
-		// Return false if there is no dialogue interface present
-		return false;
-	}
-
-	/**
-	 * Finds actor based on NPC name. To be used when dialogue is not started by interaction.
-	 * @return The found actor or the last interacted actor
-	 */
-	private Actor findActor() {
-		NPC actor = null;
-
-		for (NPC npc : client.getNpcs()) {
-			// Check the NPC cache for actor based on NPC name
-			if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(lastNpcDialogue.getName())) {
-				actor = npc;
-				break;
-			}
-		}
-
-		// Return the found actor if found
-		// If not found return the last interacted with NPC
-		if (actor != null) {
-			log.debug("Found matching actor: " + actor.getName() + " " + actor.getId());
-			return actor;
-		} else {
-			log.warn("Unable to find matching actor. Fallback to using latest NPC: " + lastInteractedActor.getName());
-			return lastInteractedActor;
-		}
-	}
-
-	/**
-	 * Gets {@link Dialogue} from dialogue interface widget
-	 *
-	 * @param group     The group id for the dialogue widget
-	 * @param nameChild The child id of the name in the dialogue widget
-	 * @param textChild The child id of the content in the dialogue widget
-	 * @return The sanitized dialogue from the dialogue widget
-	 */
-	private Dialogue getDialogueMessage(final int group, final int nameChild, final int textChild) {
-		Widget nameWidget = client.getWidget(group, nameChild);
-		Widget textWidget = client.getWidget(group, textChild);
-
-		String sanitizedName = (nameWidget == null) ? null : Text.sanitizeMultilineText(nameWidget.getText());
-		String sanitizedText = (textWidget == null) ? null : Text.sanitizeMultilineText(textWidget.getText());
-
-		return new Dialogue(sanitizedName, sanitizedText);
-	}
-
-	/**
-	 * Check if actor is listed in the NPC ignore list
-	 *
-	 * @param name The NPC name to check
-	 * @return Whether actor is in the ignore list
-	 */
-	private boolean ignoredActor(String name) {
-		if (name == null || config.ignoredNPCs() == null) {
-			return false;
-		}
-
-		String[] names = config.ignoredNPCs().split(",");
-		for (String n : names) {
-			if (n.trim().equals(name) || chatboxService.trimName(n).equals(name)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Get the last NPC player entered dialogue with
+	 * Save NPCs the player interacts with to lastInteractedActor variable
 	 */
 	@Subscribe
 	private void onInteractingChanged(InteractingChanged event) {
@@ -208,7 +209,7 @@ public class DialoguePlugin extends Plugin {
 			return;
 		}
 		lastInteractedActor = event.getTarget();
-		log.info("Interacted with actor: " + lastInteractedActor.getName());
+		log.debug("Interacted with actor: " + lastInteractedActor.getName());
 	}
 
 	/**
@@ -218,7 +219,7 @@ public class DialoguePlugin extends Plugin {
 	public void onGameStateChanged(GameStateChanged gameStateChanged) {
 		switch (gameStateChanged.getGameState()) {
 			case LOGGED_IN:
-				// When logged in clear all overhead text from previous NPCs
+				// When logging in clear all overhead text
 				for (Actor actor : lastActorOverheadTickTime.keySet()) {
 					overheadService.clearOverheadText(actor);
 				}
@@ -227,6 +228,7 @@ public class DialoguePlugin extends Plugin {
 			case HOPPING:
 			case LOGIN_SCREEN:
 				// Clear actor history when logging out, hopping or losing connection
+				log.debug("Clearing actor history...");
 				lastActorOverheadTickTime.clear();
 				break;
 			default:

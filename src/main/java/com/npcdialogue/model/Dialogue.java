@@ -7,5 +7,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class Dialogue {
     private final String name;
-    private final String content;
+    private final String text;
 }

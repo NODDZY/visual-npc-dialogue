@@ -27,7 +27,7 @@ public class ChatboxService {
         final ChatMessageBuilder chatMessage = new ChatMessageBuilder()
                 .append(config.nameColor(), trimName(dialogue.getName()))
                 .append(config.nameColor(), ": ")
-                .append(config.contentColor(), dialogue.getContent());
+                .append(config.contentColor(), dialogue.getText());
 
         chatMessageManager.queue(QueuedMessage.builder()
                 .type(ChatMessageType.CONSOLE)
