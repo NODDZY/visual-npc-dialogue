@@ -75,6 +75,16 @@ public class DialoguePlugin extends Plugin {
 
 			processDialogue(dialogue);
 		}
+
+		// Check if player sends public chat message while player overhead is being shown
+		if (client.getLocalPlayer() != null && event.getType() == ChatMessageType.PUBLICCHAT && event.getName().equals(client.getLocalPlayer().getName())) {
+			if (client.getLocalPlayer().getOverheadText() != null) {
+				// Remove timer to not prematurely clear public chat overhead
+				if (lastActorOverheadTickTime.remove(client.getLocalPlayer()) != null) {
+					log.debug("Player sent chat while overhead was being displayed. Cleared overhead counter for player actor");
+				}
+			}
+		}
 	}
 
 	/**
