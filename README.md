@@ -17,7 +17,7 @@ To install the plugin, start up the RuneLite client and search for the *Visual N
 Detailed instructions on how to achieve this can be found on the [RuneLite wiki](https://github.com/runelite/runelite/wiki/Information-about-the-Plugin-Hub).
 
 ## Configuration
-Plugin settings are found in the RuneLite Configuration menu.
+Plugin settings are found in the RuneLite plugin configuration panel.
 
 | Option                   | Description                                                   |
 |--------------------------|---------------------------------------------------------------|
