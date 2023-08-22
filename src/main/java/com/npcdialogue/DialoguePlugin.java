@@ -7,10 +7,11 @@ import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.*;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetID;
+import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -29,6 +30,9 @@ import java.util.Map;
 public class DialoguePlugin extends Plugin {
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private Util util;
@@ -60,30 +64,35 @@ public class DialoguePlugin extends Plugin {
 	}
 
 	/**
-	 * Looks for chat messages, turns it into {@link Dialogue} object and starts dialogue process
-	 * @param event Chat Message with type=DIALOG
+	 * When a widget loads check if it is a dialgue widget and process the dialogue.
 	 */
 	@Subscribe
-	public void onChatMessage(ChatMessage event) {
-		if (event.getType() == ChatMessageType.DIALOG) {
-			String[] chat = event.getMessage().split("\\|");
-			String name = Text.sanitizeMultilineText(chat[0]);
-			String message = Text.sanitizeMultilineText(chat[1]);
+	public void onWidgetLoaded(WidgetLoaded event) {
+		// Check if widget is NPC dialogue
+		if(event.getGroupId() == WidgetID.DIALOG_NPC_GROUP_ID) {
+			Widget widget = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT.getPackedId());
+			clientThread.invokeLater(() -> {
+				String name = Text.sanitizeMultilineText(client.getWidget(WidgetInfo.DIALOG_NPC_NAME.getPackedId()).getText());
+				String message = Text.sanitizeMultilineText(widget.getText());
 
-			Dialogue dialogue = new Dialogue(name, message);
-			log.debug("Dialogue registered: " + dialogue);
+				Dialogue dialogue = new Dialogue(name, message);
+				log.debug("NPC dialogue registered: " + dialogue);
 
-			processDialogue(dialogue);
+				processDialogue(dialogue);
+			});
 		}
+		// Check if widget is Player dialogue
+		else if(event.getGroupId() == WidgetID.DIALOG_PLAYER_GROUP_ID) {
+			Widget widget = client.getWidget(WidgetInfo.DIALOG_PLAYER_TEXT.getPackedId());
+			clientThread.invokeLater(() -> {
+				String name = Text.sanitizeMultilineText(client.getLocalPlayer().getName());
+				String message = Text.sanitizeMultilineText(widget.getText());
 
-		// Check if player sends public chat message while player overhead is being shown
-		if (client.getLocalPlayer() != null && event.getType() == ChatMessageType.PUBLICCHAT && event.getName().equals(client.getLocalPlayer().getName())) {
-			if (client.getLocalPlayer().getOverheadText() != null) {
-				// Remove timer to not prematurely clear public chat overhead
-				if (lastActorOverheadTickTime.remove(client.getLocalPlayer()) != null) {
-					log.debug("Player sent chat while overhead was being displayed. Cleared overhead counter for player actor");
-				}
-			}
+				Dialogue dialogue = new Dialogue(name, message);
+				log.debug("Player dialogue registered: " + dialogue);
+
+				processDialogue(dialogue);
+			});
 		}
 	}
 
@@ -186,6 +195,22 @@ public class DialoguePlugin extends Plugin {
 	}
 
 	/**
+	 * Looks for player chat messages so overhead is not prematurely cleared
+	 */
+	@Subscribe
+	public void onChatMessage(ChatMessage event) {
+		// Check if player sends public chat message while player overhead is being shown
+		if (client.getLocalPlayer() != null && event.getType() == ChatMessageType.PUBLICCHAT && event.getName().equals(client.getLocalPlayer().getName())) {
+			if (client.getLocalPlayer().getOverheadText() != null) {
+				// Remove timer to not prematurely clear public chat overhead
+				if (lastActorOverheadTickTime.remove(client.getLocalPlayer()) != null) {
+					log.debug("Player sent chat while overhead was being displayed. Cleared overhead counter for player actor");
+				}
+			}
+		}
+	}
+
+	/**
 	 * Save NPCs the player interacts with to lastInteractedActor variable
 	 */
 	@Subscribe
@@ -204,7 +229,7 @@ public class DialoguePlugin extends Plugin {
 	public void onGameStateChanged(GameStateChanged gameStateChanged) {
 		switch (gameStateChanged.getGameState()) {
 			case LOGGED_IN:
-				// When logging in clear all overhead text
+				// When logging in clear all known overhead text
 				for (Actor actor : lastActorOverheadTickTime.keySet()) {
 					overheadService.clearOverheadText(actor);
 				}
