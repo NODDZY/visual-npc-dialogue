@@ -8,9 +8,9 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.events.*;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetID;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -69,10 +69,10 @@ public class DialoguePlugin extends Plugin {
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event) {
 		// Check if widget is NPC dialogue
-		if(event.getGroupId() == WidgetID.DIALOG_NPC_GROUP_ID) {
-			Widget widget = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT.getPackedId());
+		if(event.getGroupId() == InterfaceID.DIALOG_NPC ) {
+			Widget widget = client.getWidget(ComponentID.DIALOG_NPC_TEXT);
 			clientThread.invokeLater(() -> {
-				String name = Text.sanitizeMultilineText(client.getWidget(WidgetInfo.DIALOG_NPC_NAME.getPackedId()).getText());
+				String name = Text.sanitizeMultilineText(client.getWidget(ComponentID.DIALOG_NPC_NAME).getText());
 				String message = Text.sanitizeMultilineText(widget.getText());
 
 				Dialogue dialogue = new Dialogue(name, message);
@@ -82,8 +82,8 @@ public class DialoguePlugin extends Plugin {
 			});
 		}
 		// Check if widget is Player dialogue
-		else if(event.getGroupId() == WidgetID.DIALOG_PLAYER_GROUP_ID) {
-			Widget widget = client.getWidget(WidgetInfo.DIALOG_PLAYER_TEXT.getPackedId());
+		else if(event.getGroupId() == InterfaceID.DIALOG_PLAYER) {
+			Widget widget = client.getWidget(ComponentID.DIALOG_PLAYER_TEXT);
 			clientThread.invokeLater(() -> {
 				String name = Text.sanitizeMultilineText(client.getLocalPlayer().getName());
 				String message = Text.sanitizeMultilineText(widget.getText());
