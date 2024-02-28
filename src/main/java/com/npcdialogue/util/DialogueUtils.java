@@ -13,7 +13,7 @@ public class DialogueUtils {
      * @return name without suffixes
      * @see <a href="https://oldschool.runescape.wiki/w/Suffixes">Wiki: Suffixes</a>
      */
-    public String trimName(String name) {
+    public static String trimName(String name) {
         // Regex pattern to match parentheses and their contents at the end of the string
         Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
         Matcher matcher = pattern.matcher(name);
@@ -25,7 +25,7 @@ public class DialogueUtils {
      * @param name The NPC name to check
      * @return Whether actor is in the ignore list
      */
-    public boolean isIgnoredActor(String ignoreList, String name) {
+    public static boolean isIgnoredActor(String ignoreList, String name) {
         if (name == null || ignoreList == null) {
             return false;
         }

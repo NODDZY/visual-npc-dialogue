@@ -35,7 +35,6 @@ import java.util.Map;
 public class DialoguePlugin extends Plugin {
     @Inject private Client client;
     @Inject private ClientThread clientThread;
-    @Inject private DialogueUtils dialogueUtils;
     @Inject private DialogueConfig config;
     @Inject private ChatboxService chatboxService;
     @Inject private OverheadService overheadService;
@@ -96,7 +95,7 @@ public class DialoguePlugin extends Plugin {
             displayDialoguePlayer();
         }
         // Check if NPC has dialogue interface
-        else if (dialogue.getText() != null && !dialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
+        else if (dialogue.getText() != null && !DialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
             lastNpcDialogue = dialogue;
             lastPlayerDialogue = null;
             displayDialogueNPC();

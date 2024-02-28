@@ -13,7 +13,6 @@ import javax.inject.Inject;
 
 @Slf4j
 public class ChatboxService {
-    @Inject private DialogueUtils dialogueUtils;
     @Inject private DialogueConfig config;
     @Inject private ChatMessageManager chatMessageManager;
 
@@ -22,7 +21,7 @@ public class ChatboxService {
      */
     public void addDialogMessage(Dialogue dialogue) {
         final ChatMessageBuilder chatMessage = new ChatMessageBuilder()
-                .append(config.nameColor(), dialogueUtils.trimName(dialogue.getName()))
+                .append(config.nameColor(), DialogueUtils.trimName(dialogue.getName()))
                 .append(config.nameColor(), ": ")
                 .append(config.contentColor(), dialogue.getText());
 
