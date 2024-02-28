@@ -1,6 +1,8 @@
-package com.npcdialogue;
+package com.npcdialogue.service;
 
+import com.npcdialogue.DialogueConfig;
 import com.npcdialogue.model.Dialogue;
+import com.npcdialogue.util.DialogueUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -11,21 +13,16 @@ import javax.inject.Inject;
 
 @Slf4j
 public class ChatboxService {
-    @Inject
-    private Util util;
-
-    @Inject
-    private DialogueConfig config;
-
-    @Inject
-    private ChatMessageManager chatMessageManager;
+    @Inject private DialogueUtils dialogueUtils;
+    @Inject private DialogueConfig config;
+    @Inject private ChatMessageManager chatMessageManager;
 
     /**
      * Adds NPC/Player dialogue to chatbox
      */
     public void addDialogMessage(Dialogue dialogue) {
         final ChatMessageBuilder chatMessage = new ChatMessageBuilder()
-                .append(config.nameColor(), util.trimName(dialogue.getName()))
+                .append(config.nameColor(), dialogueUtils.trimName(dialogue.getName()))
                 .append(config.nameColor(), ": ")
                 .append(config.contentColor(), dialogue.getText());
 
@@ -34,6 +31,6 @@ public class ChatboxService {
                 .runeLiteFormattedMessage(chatMessage.build())
                 .build());
 
-        log.debug("Chatbox dialogue built and queued: " + dialogue);
+        log.debug("Chatbox dialogue built and queued: {}", dialogue);
     }
 }
