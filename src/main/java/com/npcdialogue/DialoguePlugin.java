@@ -43,7 +43,21 @@ public class DialoguePlugin extends Plugin {
     private Dialogue lastPlayerDialogue = null;
     private Actor lastInteractedActor = null;
     // Collection of actors and their overhead text timestamp
-    private final Map<Actor, Integer> lastActorOverheadTickTime = new HashMap<>();
+    private final Map<Actor, OverheadEntry> overheadEntries = new HashMap<>();
+
+    /**
+     * Represents an overhead text entry with a start tick and duration.
+     * Used to determine when overhead text should expire and be removed.
+     */
+    private static class OverheadEntry {
+        final int startTick;
+        final int durationTicks;
+
+        OverheadEntry(int startTick, int durationTicks) {
+            this.startTick = startTick;
+            this.durationTicks = durationTicks;
+        }
+    }
 
     @Provides
     DialogueConfig provideConfig(ConfigManager configManager) {
@@ -104,6 +118,7 @@ public class DialoguePlugin extends Plugin {
 
     /**
      * Displays player dialogue overhead or in chatbox based on configuration
+     * Calculates overhead display duration dynamically based on message length
      */
     private void displayDialoguePlayer() {
         // Chatbox dialogue
@@ -113,12 +128,20 @@ public class DialoguePlugin extends Plugin {
         // Overhead dialogue
         if (lastPlayerDialogue != null && config.displayOverheadPlayerDialogue()) {
             overheadService.setOverheadTextPlayer(lastPlayerDialogue);
-            lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
+            int baseTicks = 3; //Minimum duration
+            int extraPerCharMs = config.extraDisplayTimePerCharacter(); // get user input
+            int messageLength = lastPlayerDialogue.getText().length(); // get text length
+            int totalMs = messageLength * extraPerCharMs; // calculate message duration
+            // Calculate display duration in ticks, rounding up
+            int totalTicks = Math.max(baseTicks, (int)Math.ceil((float) totalMs / 600));
+
+            overheadEntries.put(client.getLocalPlayer(), new OverheadEntry(client.getTickCount(), totalTicks));
         }
     }
 
     /**
      * Displays NPC dialogue overhead or in chatbox
+     * Calculates overhead display duration dynamically based on message length
      */
     private void displayDialogueNPC() {
         // Chatbox dialogue
@@ -127,15 +150,21 @@ public class DialoguePlugin extends Plugin {
         }
         // Overhead dialogue
         if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
-            // Check if NPC is saved in lastInteractedActor
+            // Calculate overhead display duration in ticks based on message length, same as player
+            int baseTicks = 3;
+            int extraPerCharMs = config.extraDisplayTimePerCharacter();
+            int messageLength = lastNpcDialogue.getText().length();
+            int totalMs = messageLength * extraPerCharMs;
+            int totalTicks = Math.max(baseTicks, (int)Math.ceil((float) totalMs / 600));
+
+            // Use last interacted actor if it matches, otherwise search for actor
             if (lastInteractedActor == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
-                // If not -> find NPC
                 Actor npc = findActor();
                 overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
-                lastActorOverheadTickTime.put(npc, client.getTickCount());
+                overheadEntries.put(npc, new OverheadEntry(client.getTickCount(), totalTicks));
             } else {
                 overheadService.setOverheadTextNpc(lastInteractedActor, lastNpcDialogue);
-                lastActorOverheadTickTime.put(lastInteractedActor, client.getTickCount());
+                overheadEntries.put(lastInteractedActor, new OverheadEntry(client.getTickCount(), totalTicks));
             }
         }
     }
@@ -170,11 +199,13 @@ public class DialoguePlugin extends Plugin {
      */
     @Subscribe
     public void onGameTick(GameTick event) {
-        for (Iterator<Actor> iterator = lastActorOverheadTickTime.keySet().iterator(); iterator.hasNext(); ) {
-            Actor actor = iterator.next();
-            // How long overhead text should last for
-            final int TIMEOUT_TICKS = 3;
-            if (client.getTickCount() - lastActorOverheadTickTime.get(actor) > TIMEOUT_TICKS) {
+        Iterator<Map.Entry<Actor, OverheadEntry>> iterator = overheadEntries.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Actor, OverheadEntry> entry = iterator.next();
+            Actor actor = entry.getKey();
+            OverheadEntry overhead = entry.getValue();
+
+            if (client.getTickCount() - overhead.startTick > overhead.durationTicks) {
                 overheadService.clearOverheadText(actor);
                 iterator.remove();
             }
@@ -190,7 +221,7 @@ public class DialoguePlugin extends Plugin {
         if (client.getLocalPlayer() != null && event.getType() == ChatMessageType.PUBLICCHAT && event.getName().equals(client.getLocalPlayer().getName())) {
             if (client.getLocalPlayer().getOverheadText() != null) {
                 // Remove timer to not prematurely clear public chat overhead
-                if (lastActorOverheadTickTime.remove(client.getLocalPlayer()) != null) {
+                if (overheadEntries.remove(client.getLocalPlayer()) != null) {
                     log.debug("Player sent chat while overhead was being displayed. Cleared overhead counter for player actor");
                 }
             }
@@ -217,7 +248,7 @@ public class DialoguePlugin extends Plugin {
         switch (gameStateChanged.getGameState()) {
             case LOGGED_IN:
                 // When logging in clear all known overhead text
-                for (Actor actor : lastActorOverheadTickTime.keySet()) {
+                for (Actor actor : overheadEntries.keySet()) {
                     overheadService.clearOverheadText(actor);
                 }
                 break;
@@ -226,7 +257,7 @@ public class DialoguePlugin extends Plugin {
             case LOGIN_SCREEN:
                 // Clear actor history when logging out, hopping or losing connection
                 log.debug("Clearing actor history...");
-                lastActorOverheadTickTime.clear();
+                overheadEntries.clear();
                 break;
             default:
                 break;

@@ -105,7 +105,18 @@ public interface DialogueConfig extends Config {
             section = SECTION_OVERHEAD,
             position = 302
     )
-    default boolean displayOverheadPlayerDialogue() {
-        return true;
+    default boolean displayOverheadPlayerDialogue() { return true; }
+
+    @ConfigItem(
+            keyName = "extraDisplayTimePerCharacter",
+            name    = "Overhead Display Time per Character",
+            description = "Dynamically adds more display time per character <br>" +
+                "Messages are shown with a minimum of 3 Ticks, 0ms for standard behavior.",
+             section = SECTION_OVERHEAD,
+            position = 303
+    )
+    @Units(Units.MILLISECONDS)
+    default int extraDisplayTimePerCharacter()
+    {   return 60;
     }
 }
