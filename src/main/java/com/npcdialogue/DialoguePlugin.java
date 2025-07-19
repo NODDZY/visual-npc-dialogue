@@ -117,6 +117,27 @@ public class DialoguePlugin extends Plugin {
     }
 
     /**
+     * Calculates the total display time in game ticks and updates the overheadEntries map.
+     * @param actor The actor (NPC or player) for which the dialogue is displayed.
+     * @param dialogue The dialogue text being shown.
+     */
+    private void setOverheadWithDuration(Actor actor, Dialogue dialogue) {
+        int baseTicks = 3;
+        int extraPerCharMs = config.extraDisplayTimePerCharacter();
+        int messageLength = dialogue.getText().length();
+        int totalMs = messageLength * extraPerCharMs;
+
+        // Convert milliseconds to ticks (600 ms per tick), rounding up
+        int totalTicks = Math.max(baseTicks, (int) Math.ceil((double) totalMs / 600.0));
+
+        overheadEntries.put(actor, new OverheadEntry(client.getTickCount(), totalTicks));
+        log.debug("Overhead for [{}]: len={}, totalMs={}, totalTicks={}",
+            actor.getName(), messageLength, totalMs, totalTicks);
+
+    }
+
+
+    /**
      * Displays player dialogue overhead or in chatbox based on configuration
      * Calculates overhead display duration dynamically based on message length
      */
@@ -128,44 +149,26 @@ public class DialoguePlugin extends Plugin {
         // Overhead dialogue
         if (lastPlayerDialogue != null && config.displayOverheadPlayerDialogue()) {
             overheadService.setOverheadTextPlayer(lastPlayerDialogue);
-            int baseTicks = 3; //Minimum duration
-            int extraPerCharMs = config.extraDisplayTimePerCharacter(); // get user input
-            int messageLength = lastPlayerDialogue.getText().length(); // get text length
-            int totalMs = messageLength * extraPerCharMs; // calculate message duration
-            // Calculate display duration in ticks, rounding up
-            int totalTicks = Math.max(baseTicks, (int)Math.ceil((float) totalMs / 600));
-
-            overheadEntries.put(client.getLocalPlayer(), new OverheadEntry(client.getTickCount(), totalTicks));
+            setOverheadWithDuration(client.getLocalPlayer(), lastPlayerDialogue);
         }
     }
 
     /**
-     * Displays NPC dialogue overhead or in chatbox
-     * Calculates overhead display duration dynamically based on message length
+     * Displays NPC dialogue overhead or in chatbox.
+     * Overhead timing is centralized via setOverheadWithDuration().
      */
-    private void displayDialogueNPC() {
-        // Chatbox dialogue
-        if (lastNpcDialogue != null && config.displayChatboxNpcDialogue()) {
+    private void displayDialogueNPC()
+    {
+        if (lastNpcDialogue != null && config.displayChatboxNpcDialogue())
+        {
             chatboxService.addDialogMessage(lastNpcDialogue);
         }
-        // Overhead dialogue
-        if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
-            // Calculate overhead display duration in ticks based on message length, same as player
-            int baseTicks = 3;
-            int extraPerCharMs = config.extraDisplayTimePerCharacter();
-            int messageLength = lastNpcDialogue.getText().length();
-            int totalMs = messageLength * extraPerCharMs;
-            int totalTicks = Math.max(baseTicks, (int)Math.ceil((float) totalMs / 600));
 
-            // Use last interacted actor if it matches, otherwise search for actor
-            if (lastInteractedActor == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
-                Actor npc = findActor();
-                overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
-                overheadEntries.put(npc, new OverheadEntry(client.getTickCount(), totalTicks));
-            } else {
-                overheadService.setOverheadTextNpc(lastInteractedActor, lastNpcDialogue);
-                overheadEntries.put(lastInteractedActor, new OverheadEntry(client.getTickCount(), totalTicks));
-            }
+        if (lastNpcDialogue != null && config.displayOverheadNpcDialogue())
+        {
+            Actor npc = findActor();
+            overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
+            setOverheadWithDuration(npc, lastNpcDialogue);
         }
     }
 
