@@ -11,8 +11,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.events.*;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.InterfaceID;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -55,11 +54,12 @@ public class DialoguePlugin extends Plugin {
      */
     @Subscribe
     public void onWidgetLoaded(WidgetLoaded event) {
-        // Check if widget is DIALOG_NPC
-        if(event.getGroupId() == InterfaceID.DIALOG_NPC) {
-            Widget widget = client.getWidget(ComponentID.DIALOG_NPC_TEXT);
+        // Check if widget is DIALOG_NPC (CHAT_LEFT)
+        if(event.getGroupId() == InterfaceID.CHAT_LEFT) {
+            Widget widget = client.getWidget(InterfaceID.ChatLeft.TEXT);
+
             clientThread.invokeLater(() -> {
-                String name = Text.sanitizeMultilineText(client.getWidget(ComponentID.DIALOG_NPC_NAME).getText());
+                String name = Text.sanitizeMultilineText(client.getWidget(InterfaceID.ChatLeft.NAME).getText());
                 String message = Text.sanitizeMultilineText(widget.getText());
 
                 Dialogue dialogue = new Dialogue(name, message);
@@ -68,9 +68,10 @@ public class DialoguePlugin extends Plugin {
                 processDialogue(dialogue);
             });
         }
-        // Check if widget is DIALOG_PLAYER
-        else if(event.getGroupId() == InterfaceID.DIALOG_PLAYER) {
-            Widget widget = client.getWidget(ComponentID.DIALOG_PLAYER_TEXT);
+        // Check if widget is DIALOG_PLAYER (CHAT_RIGHT)
+        else if(event.getGroupId() == InterfaceID.CHAT_RIGHT) {
+            Widget widget = client.getWidget(InterfaceID.ChatRight.TEXT);
+
             clientThread.invokeLater(() -> {
                 String name = Text.sanitizeMultilineText(client.getLocalPlayer().getName());
                 String message = Text.sanitizeMultilineText(widget.getText());
@@ -146,7 +147,7 @@ public class DialoguePlugin extends Plugin {
      */
     private Actor findActor() {
         NPC actor = null;
-        for (NPC npc : client.getNpcs()) {
+        for (NPC npc : client.getTopLevelWorldView().npcs()) {
             // Check the NPC cache for actor based on NPC name
             if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(lastNpcDialogue.getName())) {
                 actor = npc;
