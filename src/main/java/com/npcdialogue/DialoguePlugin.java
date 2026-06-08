@@ -61,11 +61,25 @@ public class DialoguePlugin extends Plugin {
         }
         // Check if widget is DIALOG_NPC (CHAT_LEFT)
         if(event.getGroupId() == InterfaceID.CHAT_LEFT) {
-            Widget widget = client.getWidget(InterfaceID.ChatLeft.TEXT);
+            Widget widgetText = client.getWidget(InterfaceID.ChatLeft.TEXT);
+            Widget widgetName = client.getWidget(InterfaceID.ChatLeft.NAME);
+
+            if (widgetText == null || widgetName == null) {
+                log.warn("NPC dialogue widget or name widget is null, skipping.");
+                return;
+            }
 
             clientThread.invokeLater(() -> {
-                String name = Text.sanitizeMultilineText(client.getWidget(InterfaceID.ChatLeft.NAME).getText());
-                String message = Text.sanitizeMultilineText(widget.getText());
+                String rawName = widgetName.getText();
+                String rawText = widgetText.getText();
+
+                if (rawName == null || rawText == null) {
+                    log.warn("NPC dialogue name or text is null after widget load, skipping.");
+                    return;
+                }
+
+                String name = Text.sanitizeMultilineText(rawName);
+                String message = Text.sanitizeMultilineText(rawText);
 
                 Dialogue dialogue = new Dialogue(name, message);
                 log.debug("NPC dialogue registered: {}", dialogue);
@@ -75,11 +89,22 @@ public class DialoguePlugin extends Plugin {
         }
         // Check if widget is DIALOG_PLAYER (CHAT_RIGHT)
         else if(event.getGroupId() == InterfaceID.CHAT_RIGHT) {
-            Widget widget = client.getWidget(InterfaceID.ChatRight.TEXT);
+            Widget widgetText = client.getWidget(InterfaceID.ChatRight.TEXT);
+            if (widgetText == null) {
+                log.warn("Player dialogue widget is null, skipping.");
+                return;
+            }
 
             clientThread.invokeLater(() -> {
+                String rawText = widgetText.getText();
+
+                if (client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null || rawText == null) {
+                    log.warn("Local player or dialogue text is null after widget load, skipping.");
+                    return;
+                }
+
                 String name = Text.sanitizeMultilineText(client.getLocalPlayer().getName());
-                String message = Text.sanitizeMultilineText(widget.getText());
+                String message = Text.sanitizeMultilineText(rawText);
 
                 Dialogue dialogue = new Dialogue(name, message);
                 log.debug("Player dialogue registered: {}", dialogue);
@@ -96,12 +121,20 @@ public class DialoguePlugin extends Plugin {
     private void processDialogue(Dialogue dialogue) {
         // Check if player has dialogue interface
         if (dialogue.getName().equals(client.getLocalPlayer().getName()) && dialogue.getText() != null) {
+            if (dialogue.equals(lastPlayerDialogue)) {
+                log.trace("Duplicate player dialogue detected, skipping: {}", dialogue);
+                return;
+            }
             lastPlayerDialogue = dialogue;
             lastNpcDialogue = null;
             displayDialoguePlayer();
         }
         // Check if NPC has dialogue interface
         else if (dialogue.getText() != null && !DialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
+            if (dialogue.equals(lastNpcDialogue)) {
+                log.debug("Duplicate NPC dialogue detected, skipping: {}", dialogue);
+                return;
+            }
             lastNpcDialogue = dialogue;
             lastPlayerDialogue = null;
             displayDialogueNPC();
@@ -134,9 +167,12 @@ public class DialoguePlugin extends Plugin {
         // Overhead dialogue
         if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
             // Check if NPC is saved in lastInteractedActor
-            if (lastInteractedActor == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
-                // If not -> find NPC
+            if (lastInteractedActor == null || lastInteractedActor.getName() == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
                 Actor npc = findActor();
+                if (npc == null) {
+                    log.info("No valid actor found for NPC overhead dialogue, skipping overhead");
+                    return;
+                }
                 overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
                 lastActorOverheadTickTime.put(npc, client.getTickCount());
             } else {
@@ -164,10 +200,11 @@ public class DialoguePlugin extends Plugin {
             // Return the found actor if found
             log.debug("Found matching actor: [{}] {}", actor.getId(), actor.getName());
             return actor;
-        } else {
-            // Return the last interacted with NPC if not found
-            log.warn("Unable to find matching actor. Fallback to using latest NPC: {}", lastInteractedActor.getName());
+        } else if (lastInteractedActor != null && lastInteractedActor.getName() != null) {
+            log.debug("Unable to find matching actor. Fallback to using latest NPC: {}", lastInteractedActor.getName());
             return lastInteractedActor;
+        } else {
+            return null;
         }
     }
 
@@ -232,6 +269,9 @@ public class DialoguePlugin extends Plugin {
             case LOGIN_SCREEN:
                 // Clear actor history when logging out, hopping or losing connection
                 log.debug("Clearing actor history...");
+                lastNpcDialogue = null;
+                lastPlayerDialogue = null;
+                lastInteractedActor = null;
                 lastActorOverheadTickTime.clear();
                 break;
             default:
