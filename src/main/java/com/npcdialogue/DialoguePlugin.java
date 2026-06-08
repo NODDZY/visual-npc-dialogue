@@ -13,7 +13,6 @@ import net.runelite.api.NPC;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -34,14 +33,15 @@ import static net.runelite.api.gameval.VarbitID.CUTSCENE_STATUS;
     tags = { "npc", "dialogue", "chat" }
 )
 public class DialoguePlugin extends Plugin {
+    private static final int SCRIPT_CHAT_DIALOGUE = 600;
+    private static final int TIMEOUT_TICKS = 3;
+
     @Inject private Client client;
-    @Inject private ClientThread clientThread;
     @Inject private DialogueConfig config;
     @Inject private ChatboxService chatboxService;
     @Inject private OverheadService overheadService;
 
-    private Dialogue lastNpcDialogue = null;
-    private Dialogue lastPlayerDialogue = null;
+    private Dialogue lastProcessedDialogue = null;
     private Actor lastInteractedActor = null;
     // Collection of actors and their overhead text timestamp
     private final Map<Actor, Integer> lastActorOverheadTickTime = new HashMap<>();
@@ -52,132 +52,44 @@ public class DialoguePlugin extends Plugin {
     }
 
     /**
-     * When a widget loads check if it is a dialogue widget and process the dialogue
-     */
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded event) {
-        if (config.disableDialogueDuringCutscene() && client.getVarbitValue(CUTSCENE_STATUS) == 1) {
-            return;
-        }
-        // Check if widget is DIALOG_NPC (CHAT_LEFT)
-        if(event.getGroupId() == InterfaceID.CHAT_LEFT) {
-            Widget widgetText = client.getWidget(InterfaceID.ChatLeft.TEXT);
-            Widget widgetName = client.getWidget(InterfaceID.ChatLeft.NAME);
-
-            if (widgetText == null || widgetName == null) {
-                log.warn("NPC dialogue widget or name widget is null, skipping.");
-                return;
-            }
-
-            clientThread.invokeLater(() -> {
-                String rawName = widgetName.getText();
-                String rawText = widgetText.getText();
-
-                if (rawName == null || rawText == null) {
-                    log.warn("NPC dialogue name or text is null after widget load, skipping.");
-                    return;
-                }
-
-                String name = Text.sanitizeMultilineText(rawName);
-                String message = Text.sanitizeMultilineText(rawText);
-
-                Dialogue dialogue = new Dialogue(name, message);
-                log.debug("NPC dialogue registered: {}", dialogue);
-
-                processDialogue(dialogue);
-            });
-        }
-        // Check if widget is DIALOG_PLAYER (CHAT_RIGHT)
-        else if(event.getGroupId() == InterfaceID.CHAT_RIGHT) {
-            Widget widgetText = client.getWidget(InterfaceID.ChatRight.TEXT);
-            if (widgetText == null) {
-                log.warn("Player dialogue widget is null, skipping.");
-                return;
-            }
-
-            clientThread.invokeLater(() -> {
-                String rawText = widgetText.getText();
-
-                if (client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null || rawText == null) {
-                    log.warn("Local player or dialogue text is null after widget load, skipping.");
-                    return;
-                }
-
-                String name = Text.sanitizeMultilineText(client.getLocalPlayer().getName());
-                String message = Text.sanitizeMultilineText(rawText);
-
-                Dialogue dialogue = new Dialogue(name, message);
-                log.debug("Player dialogue registered: {}", dialogue);
-
-                processDialogue(dialogue);
-            });
-        }
-    }
-
-    /**
      * Looks at current dialogue and stores it if valid
      * @param dialogue Dialogue to process and display
      */
     private void processDialogue(Dialogue dialogue) {
-        // Check if player has dialogue interface
-        if (dialogue.getName().equals(client.getLocalPlayer().getName()) && dialogue.getText() != null) {
-            if (dialogue.equals(lastPlayerDialogue)) {
-                log.trace("Duplicate player dialogue detected, skipping: {}", dialogue);
-                return;
-            }
-            lastPlayerDialogue = dialogue;
-            lastNpcDialogue = null;
-            displayDialoguePlayer();
+        if (DialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
+            return;
         }
-        // Check if NPC has dialogue interface
-        else if (dialogue.getText() != null && !DialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
-            if (dialogue.equals(lastNpcDialogue)) {
-                log.debug("Duplicate NPC dialogue detected, skipping: {}", dialogue);
-                return;
-            }
-            lastNpcDialogue = dialogue;
-            lastPlayerDialogue = null;
-            displayDialogueNPC();
+        if (dialogue.equals(lastProcessedDialogue)) {
+            log.debug("Duplicate dialogue detected, skipping: {}", dialogue);
+            return;
         }
+        lastProcessedDialogue = dialogue;
+        displayDialogue(dialogue);
     }
 
-    /**
-     * Displays player dialogue overhead or in chatbox based on configuration
-     */
-    private void displayDialoguePlayer() {
-        // Chatbox dialogue
-        if (lastPlayerDialogue != null && config.displayChatboxPlayerDialogue()) {
-            chatboxService.addDialogMessage(lastPlayerDialogue);
+    private void displayDialogue(Dialogue dialogue) {
+        if (dialogue.getType() == Dialogue.Type.PLAYER) {
+            if (config.displayChatboxPlayerDialogue()) {
+                chatboxService.addDialogMessage(dialogue);
+            }
+            if (config.displayOverheadPlayerDialogue()) {
+                overheadService.setOverheadTextPlayer(dialogue);
+                lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
+            }
         }
-        // Overhead dialogue
-        if (lastPlayerDialogue != null && config.displayOverheadPlayerDialogue()) {
-            overheadService.setOverheadTextPlayer(lastPlayerDialogue);
-            lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
-        }
-    }
 
-    /**
-     * Displays NPC dialogue overhead or in chatbox
-     */
-    private void displayDialogueNPC() {
-        // Chatbox dialogue
-        if (lastNpcDialogue != null && config.displayChatboxNpcDialogue()) {
-            chatboxService.addDialogMessage(lastNpcDialogue);
-        }
-        // Overhead dialogue
-        if (lastNpcDialogue != null && config.displayOverheadNpcDialogue()) {
-            // Check if NPC is saved in lastInteractedActor
-            if (lastInteractedActor == null || lastInteractedActor.getName() == null || !lastInteractedActor.getName().equals(lastNpcDialogue.getName())) {
-                Actor npc = findActor();
-                if (npc == null) {
+        if (dialogue.getType() == Dialogue.Type.NPC) {
+            if (config.displayChatboxNpcDialogue()) {
+                chatboxService.addDialogMessage(dialogue);
+            }
+            if (config.displayOverheadNpcDialogue()) {
+                Actor actor = findActor(dialogue.getName());
+                if (actor == null) {
                     log.info("No valid actor found for NPC overhead dialogue, skipping overhead");
                     return;
                 }
-                overheadService.setOverheadTextNpc(npc, lastNpcDialogue);
-                lastActorOverheadTickTime.put(npc, client.getTickCount());
-            } else {
-                overheadService.setOverheadTextNpc(lastInteractedActor, lastNpcDialogue);
-                lastActorOverheadTickTime.put(lastInteractedActor, client.getTickCount());
+                overheadService.setOverheadTextNpc(actor, dialogue);
+                lastActorOverheadTickTime.put(actor, client.getTickCount());
             }
         }
     }
@@ -186,26 +98,18 @@ public class DialoguePlugin extends Plugin {
      * Finds actor based on NPC name. To be used when dialogue is not started by interaction
      * @return The found actor or the last interacted actor
      */
-    private Actor findActor() {
-        NPC actor = null;
+    private Actor findActor(String name) {
         for (NPC npc : client.getTopLevelWorldView().npcs()) {
-            // Check the NPC cache for actor based on NPC name
-            if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(lastNpcDialogue.getName())) {
-                actor = npc;
-                break;
+            if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(name)) {
+                return npc;
             }
         }
 
-        if (actor != null) {
-            // Return the found actor if found
-            log.debug("Found matching actor: [{}] {}", actor.getId(), actor.getName());
-            return actor;
-        } else if (lastInteractedActor != null && lastInteractedActor.getName() != null) {
+        if (lastInteractedActor != null && lastInteractedActor.getName() != null) {
             log.debug("Unable to find matching actor. Fallback to using latest NPC: {}", lastInteractedActor.getName());
             return lastInteractedActor;
-        } else {
-            return null;
         }
+        return null;
     }
 
     /**
@@ -215,13 +119,38 @@ public class DialoguePlugin extends Plugin {
     public void onGameTick(GameTick event) {
         for (Iterator<Actor> iterator = lastActorOverheadTickTime.keySet().iterator(); iterator.hasNext(); ) {
             Actor actor = iterator.next();
-            // How long overhead text should last for
-            final int TIMEOUT_TICKS = 3;
             if (client.getTickCount() - lastActorOverheadTickTime.get(actor) > TIMEOUT_TICKS) {
                 overheadService.clearOverheadText(actor);
                 iterator.remove();
             }
         }
+    }
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired event) {
+        if (event.getScriptId() != SCRIPT_CHAT_DIALOGUE) return;
+        if (config.disableDialogueDuringCutscene() && client.getVarbitValue(CUTSCENE_STATUS) == 1) return;
+
+        Widget text;
+        Widget name;
+
+        if (client.getWidget(InterfaceID.ChatLeft.UNIVERSE) != null) {
+            // NPC
+            text = client.getWidget(InterfaceID.ChatLeft.TEXT);
+            name = client.getWidget(InterfaceID.ChatLeft.NAME);
+        } else if (client.getWidget(InterfaceID.ChatRight.UNIVERSE) != null) {
+            // PLAYER
+            text = client.getWidget(InterfaceID.ChatRight.TEXT);
+            name = client.getWidget(InterfaceID.ChatRight.NAME);
+        } else {
+            log.debug("Could not find dialogue widgets post script");
+            return;
+        }
+        if (text == null || name == null) return;
+
+        boolean isPlayer = name.getText().equals(client.getLocalPlayer().getName());
+
+        processDialogue(new Dialogue(name.getText(), Text.sanitizeMultilineText(text.getText()), isPlayer ? Dialogue.Type.PLAYER : Dialogue.Type.NPC));
     }
 
     /**
@@ -269,8 +198,7 @@ public class DialoguePlugin extends Plugin {
             case LOGIN_SCREEN:
                 // Clear actor history when logging out, hopping or losing connection
                 log.debug("Clearing actor history...");
-                lastNpcDialogue = null;
-                lastPlayerDialogue = null;
+                lastProcessedDialogue = null;
                 lastInteractedActor = null;
                 lastActorOverheadTickTime.clear();
                 break;
