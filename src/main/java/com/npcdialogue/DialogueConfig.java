@@ -8,6 +8,16 @@ import java.awt.*;
 public interface DialogueConfig extends Config {
     String CONFIG_GROUP = "visualnpcdialogue";
 
+    @ConfigItem(
+        keyName = "disableDialogueDuringCutscene",
+        name = "Disable during cutscenes",
+        description = "Disable chatbox and overhead dialogue during cutscenes",
+        position = 1
+    )
+    default boolean disableDialogueDuringCutscene() {
+        return true;
+    }
+
     @ConfigSection(
             name = "Ignore List",
             description = "Custom exclusion list",

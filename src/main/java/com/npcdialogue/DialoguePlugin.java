@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static net.runelite.api.gameval.VarbitID.CUTSCENE_STATUS;
+
 @Slf4j
 @PluginDescriptor(
     name = "Visual NPC Dialogue",
@@ -54,6 +56,9 @@ public class DialoguePlugin extends Plugin {
      */
     @Subscribe
     public void onWidgetLoaded(WidgetLoaded event) {
+        if (config.disableDialogueDuringCutscene() && client.getVarbitValue(CUTSCENE_STATUS) == 1) {
+            return;
+        }
         // Check if widget is DIALOG_NPC (CHAT_LEFT)
         if(event.getGroupId() == InterfaceID.CHAT_LEFT) {
             Widget widget = client.getWidget(InterfaceID.ChatLeft.TEXT);
