@@ -7,6 +7,9 @@ import java.util.regex.Pattern;
 
 @Slf4j
 public class DialogueUtils {
+    // Regex pattern to match parentheses and their contents at the end of the string
+    private static final Pattern SUFFIX_PATTERN = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
+
     /**
      * Remove suffixes from NPC names
      * @param name NPC name
@@ -14,10 +17,7 @@ public class DialogueUtils {
      * @see <a href="https://oldschool.runescape.wiki/w/Suffixes">Wiki: Suffixes</a>
      */
     public static String trimName(String name) {
-        // Regex pattern to match parentheses and their contents at the end of the string
-        Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*$");
-        Matcher matcher = pattern.matcher(name);
-        return matcher.replaceAll("");
+        return SUFFIX_PATTERN.matcher(name).replaceAll("").trim();
     }
 
     /**
@@ -31,8 +31,10 @@ public class DialogueUtils {
         }
         // Loop through Ignore List and look for NPC name
         String[] names = ignoreList.split(",");
+        String trimmedName = trimName(name);
         for (String n : names) {
-            if (n.trim().equals(name) || trimName(name).equals(n)) {
+            String ignored = n.trim();
+            if (ignored.equalsIgnoreCase(name) || ignored.equalsIgnoreCase(trimmedName)) {
                 log.debug("NPC found in ignore list: {}", name);
                 return true;
             }
