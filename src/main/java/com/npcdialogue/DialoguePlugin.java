@@ -42,7 +42,7 @@ public class DialoguePlugin extends Plugin {
     @Inject private OverheadService overheadService;
 
     private Dialogue lastProcessedDialogue = null;
-    private Actor lastInteractedActor = null;
+    private NPC lastInteractedActor = null;
     // Collection of actors and their overhead text timestamp
     private final Map<Actor, Integer> lastActorOverheadTickTime = new HashMap<>();
 
@@ -99,14 +99,18 @@ public class DialoguePlugin extends Plugin {
      * @return The found actor or the last interacted actor
      */
     private Actor findActor(String name) {
+        if (lastInteractedActor != null && name.equals(lastInteractedActor.getName())) {
+            return lastInteractedActor;
+        }
+
         for (NPC npc : client.getTopLevelWorldView().npcs()) {
-            if (npc.getName() != null && Text.sanitizeMultilineText(npc.getName()).equals(name)) {
+            if (name.equals(npc.getName())) {
                 return npc;
             }
         }
 
-        if (lastInteractedActor != null && lastInteractedActor.getName() != null) {
-            log.debug("Unable to find matching actor. Fallback to using latest NPC: {}", lastInteractedActor.getName());
+        if (lastInteractedActor != null) {
+            log.debug("Unable to find matching actor. Fallback to using lastInteractedActor: {}", lastInteractedActor.getName());
             return lastInteractedActor;
         }
         return null;
@@ -177,8 +181,9 @@ public class DialoguePlugin extends Plugin {
         if (event.getTarget() == null || event.getSource() != client.getLocalPlayer()) {
             return;
         }
-        lastInteractedActor = event.getTarget();
-        log.debug("Interacted with actor: {}", lastInteractedActor.getName());
+
+        lastInteractedActor = (NPC) event.getTarget();
+        log.debug("Interacted with actor: {} ({})", lastInteractedActor.getName(), lastInteractedActor.getId());
     }
 
     /**
