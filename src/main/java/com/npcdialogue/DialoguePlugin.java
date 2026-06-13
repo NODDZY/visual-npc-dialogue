@@ -41,7 +41,6 @@ public class DialoguePlugin extends Plugin {
     @Inject private ChatboxService chatboxService;
     @Inject private OverheadService overheadService;
 
-    private Dialogue lastProcessedDialogue = null;
     private NPC lastInteractedActor = null;
     // Collection of actors and their overhead text timestamp
     private final Map<Actor, Integer> lastActorOverheadTickTime = new HashMap<>();
@@ -59,11 +58,6 @@ public class DialoguePlugin extends Plugin {
         if (DialogueUtils.isIgnoredActor(config.ignoredNPCs(), dialogue.getName())) {
             return;
         }
-        if (dialogue.equals(lastProcessedDialogue)) {
-            log.debug("Duplicate dialogue detected, skipping: {}", dialogue);
-            return;
-        }
-        lastProcessedDialogue = dialogue;
         displayDialogue(dialogue);
     }
 
@@ -177,7 +171,7 @@ public class DialoguePlugin extends Plugin {
      * Save NPCs the player interacts with to lastInteractedActor variable
      */
     @Subscribe
-    private void onInteractingChanged(InteractingChanged event) {
+    public void onInteractingChanged(InteractingChanged event) {
         if (event.getTarget() == null || event.getSource() != client.getLocalPlayer()) {
             return;
         }
@@ -197,13 +191,12 @@ public class DialoguePlugin extends Plugin {
                 for (Actor actor : lastActorOverheadTickTime.keySet()) {
                     overheadService.clearOverheadText(actor);
                 }
+                lastActorOverheadTickTime.clear();
                 break;
             case CONNECTION_LOST:
             case HOPPING:
             case LOGIN_SCREEN:
                 // Clear actor history when logging out, hopping or losing connection
-                log.debug("Clearing actor history...");
-                lastProcessedDialogue = null;
                 lastInteractedActor = null;
                 lastActorOverheadTickTime.clear();
                 break;
