@@ -118,4 +118,15 @@ public interface DialogueConfig extends Config {
     default boolean displayOverheadPlayerDialogue() {
         return true;
     }
+
+    @ConfigItem(
+        keyName = "truncateOverheadText",
+        name = "Truncate Overhead",
+        description = "Truncate overhead text after X characters<br>Set to 0 to disable",
+        section = SECTION_OVERHEAD,
+        position = 303
+    )
+    default int truncateOverheadText() {
+        return 0;
+    }
 }

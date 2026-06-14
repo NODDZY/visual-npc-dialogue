@@ -1,5 +1,6 @@
 package com.npcdialogue.service;
 
+import com.npcdialogue.DialogueConfig;
 import com.npcdialogue.model.Dialogue;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
@@ -10,18 +11,31 @@ import javax.inject.Inject;
 @Slf4j
 public class OverheadService {
     @Inject private Client client;
+    @Inject private DialogueConfig config;
 
     public void setOverheadTextNpc(Actor npc, Dialogue dialogue) {
-        npc.setOverheadText(dialogue.getText());
+        npc.setOverheadText(truncate(dialogue.getText()));
         log.debug("Set overhead dialogue for {} to: {}", npc.getName(), dialogue.getText());
     }
 
     public void setOverheadTextPlayer(Dialogue dialogue) {
-        client.getLocalPlayer().setOverheadText(dialogue.getText());
+        client.getLocalPlayer().setOverheadText(truncate(dialogue.getText()));
         log.debug("Set overhead dialogue for player to: {}", dialogue.getText());
     }
 
     public void clearOverheadText(Actor actor) {
         actor.setOverheadText(null);
+    }
+
+    private String truncate(String text) {
+        int maxLength = config.truncateOverheadText();
+
+        if (maxLength <= 0 || text == null || text.length() <= maxLength) {
+            return text;
+        } else if (maxLength <= 3) {
+            return text.substring(0, maxLength);
+        }
+
+        return text.substring(0, maxLength - 3) + "...";
     }
 }
