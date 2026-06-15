@@ -71,7 +71,7 @@ public class DialoguePlugin extends Plugin {
             if (config.displayOverheadNpcDialogue()) {
                 Actor actor = findActor(dialogue.getName());
                 if (actor == null) {
-                    log.info("No valid actor found for NPC overhead dialogue, skipping overhead");
+                    log.debug("No valid actor found for NPC overhead dialogue, skipping overhead");
                     return;
                 }
                 overheadService.setOverheadTextNpc(actor, dialogue);
@@ -94,8 +94,8 @@ public class DialoguePlugin extends Plugin {
             }
         }
 
-        if (lastInteractedActor != null) {
-            log.debug("Unable to find matching actor. Fallback to using lastInteractedActor: {}", lastInteractedActor.getName());
+        if (lastInteractedActor != null && lastInteractedActor.getId() != -1) {
+            log.debug("Unable to find matching actor. Fallback to using lastInteractedActor: {} ({})", lastInteractedActor.getName(), lastInteractedActor.getId());
             return lastInteractedActor;
         }
         return null;
