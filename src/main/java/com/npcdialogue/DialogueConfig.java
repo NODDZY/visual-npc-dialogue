@@ -120,11 +120,22 @@ public interface DialogueConfig extends Config {
     }
 
     @ConfigItem(
+        keyName = "durationOverheadText",
+        name = "Overhead Duration",
+        description = "How long overhead text lasts. 30 cycles = 1 game tick (~0.6s).<br>Default: 100 (~3.3 ticks)",
+        section = SECTION_OVERHEAD,
+        position = 303
+    )
+    default int durationOverheadText() {
+        return 100;
+    }
+
+    @ConfigItem(
         keyName = "truncateOverheadText",
         name = "Truncate Overhead",
         description = "Truncate overhead text after X characters<br>Set to 0 to disable",
         section = SECTION_OVERHEAD,
-        position = 303
+        position = 304
     )
     default int truncateOverheadText() {
         return 0;
