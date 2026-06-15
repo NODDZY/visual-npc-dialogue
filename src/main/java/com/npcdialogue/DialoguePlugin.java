@@ -7,7 +7,6 @@ import com.npcdialogue.service.OverheadService;
 import com.npcdialogue.util.DialogueUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.events.*;
@@ -20,9 +19,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 
 import static net.runelite.api.gameval.VarbitID.CUTSCENE_STATUS;
 
@@ -34,7 +30,6 @@ import static net.runelite.api.gameval.VarbitID.CUTSCENE_STATUS;
 )
 public class DialoguePlugin extends Plugin {
     private static final int SCRIPT_CHAT_DIALOGUE = 600;
-    private static final int TIMEOUT_TICKS = 3;
 
     @Inject private Client client;
     @Inject private DialogueConfig config;
@@ -42,8 +37,6 @@ public class DialoguePlugin extends Plugin {
     @Inject private OverheadService overheadService;
 
     private NPC lastInteractedActor = null;
-    // Collection of actors and their overhead text timestamp
-    private final Map<Actor, Integer> lastActorOverheadTickTime = new HashMap<>();
 
     @Provides
     DialogueConfig provideConfig(ConfigManager configManager) {
@@ -68,7 +61,6 @@ public class DialoguePlugin extends Plugin {
             }
             if (config.displayOverheadPlayerDialogue()) {
                 overheadService.setOverheadTextPlayer(dialogue);
-                lastActorOverheadTickTime.put(client.getLocalPlayer(), client.getTickCount());
             }
         }
 
@@ -83,7 +75,6 @@ public class DialoguePlugin extends Plugin {
                     return;
                 }
                 overheadService.setOverheadTextNpc(actor, dialogue);
-                lastActorOverheadTickTime.put(actor, client.getTickCount());
             }
         }
     }
@@ -108,20 +99,6 @@ public class DialoguePlugin extends Plugin {
             return lastInteractedActor;
         }
         return null;
-    }
-
-    /**
-     * Checks overhead text duration and clears overhead text if expired
-     */
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        for (Iterator<Actor> iterator = lastActorOverheadTickTime.keySet().iterator(); iterator.hasNext(); ) {
-            Actor actor = iterator.next();
-            if (client.getTickCount() - lastActorOverheadTickTime.get(actor) > TIMEOUT_TICKS) {
-                overheadService.clearOverheadText(actor);
-                iterator.remove();
-            }
-        }
     }
 
     @Subscribe
@@ -152,22 +129,6 @@ public class DialoguePlugin extends Plugin {
     }
 
     /**
-     * Looks for player chat messages so overhead is not prematurely cleared
-     */
-    @Subscribe
-    public void onChatMessage(ChatMessage event) {
-        // Check if player sends public chat message while player overhead is being shown
-        if (client.getLocalPlayer() != null && event.getType() == ChatMessageType.PUBLICCHAT && event.getName().equals(client.getLocalPlayer().getName())) {
-            if (client.getLocalPlayer().getOverheadText() != null) {
-                // Remove timer to not prematurely clear public chat overhead
-                if (lastActorOverheadTickTime.remove(client.getLocalPlayer()) != null) {
-                    log.debug("Player sent chat while overhead was being displayed. Cleared overhead counter for player actor");
-                }
-            }
-        }
-    }
-
-    /**
      * Save NPCs the player interacts with to lastInteractedActor variable
      */
     @Subscribe
@@ -180,25 +141,13 @@ public class DialoguePlugin extends Plugin {
         log.debug("Interacted with actor: {} ({})", lastInteractedActor.getName(), lastInteractedActor.getId());
     }
 
-    /**
-     * Reset and clear overhead text and actor history when logging in/out
-     */
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         switch (gameStateChanged.getGameState()) {
-            case LOGGED_IN:
-                // When logging in clear all known overhead text
-                for (Actor actor : lastActorOverheadTickTime.keySet()) {
-                    overheadService.clearOverheadText(actor);
-                }
-                lastActorOverheadTickTime.clear();
-                break;
             case CONNECTION_LOST:
             case HOPPING:
             case LOGIN_SCREEN:
-                // Clear actor history when logging out, hopping or losing connection
                 lastInteractedActor = null;
-                lastActorOverheadTickTime.clear();
                 break;
             default:
                 break;
