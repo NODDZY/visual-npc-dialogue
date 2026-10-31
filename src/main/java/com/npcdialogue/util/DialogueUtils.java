@@ -1,8 +1,8 @@
 package com.npcdialogue.util;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.WildcardMatcher;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -34,7 +34,7 @@ public class DialogueUtils {
         String trimmedName = trimName(name);
         for (String n : names) {
             String ignored = n.trim();
-            if (ignored.equalsIgnoreCase(name) || ignored.equalsIgnoreCase(trimmedName)) {
+            if (WildcardMatcher.matches(ignored, name) || WildcardMatcher.matches(ignored, trimmedName)) {
                 log.debug("NPC found in ignore list: {}", name);
                 return true;
             }

@@ -29,7 +29,7 @@ public interface DialogueConfig extends Config {
     @ConfigItem(
         keyName = "ignoredNPCs",
         name = "Ignored NPCs",
-        description = "List of ignored NPCs, separated by commas",
+        description = "NPCs to ignore, separated by commas. Use * as a wildcard.",
         position = 101,
         section = SECTION_IGNORE_LIST
     )
