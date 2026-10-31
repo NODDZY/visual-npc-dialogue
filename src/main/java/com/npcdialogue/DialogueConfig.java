@@ -119,12 +119,36 @@ public interface DialogueConfig extends Config {
         return true;
     }
 
+    @Alpha
+    @ConfigItem(
+            keyName = "playerOverheadColor",
+            name = "Overhead Color",
+            description = "Select the color of overhead player dialogue<br>Only affects overhead dialogue created by this plugin",
+            section = SECTION_OVERHEAD,
+            position = 303
+    )
+    default Color playerOverheadColor() {
+        return Color.YELLOW;
+    }
+
+    @Alpha
+    @ConfigItem(
+            keyName = "npcOverheadColor",
+            name = "Overhead NPC Color",
+            description = "Select the color of overhead NPC dialogue<br>Only affects overhead dialogue created by this plugin",
+            section = SECTION_OVERHEAD,
+            position = 304
+    )
+    default Color npcOverheadColor() {
+        return Color.YELLOW;
+    }
+
     @ConfigItem(
         keyName = "durationOverheadText",
         name = "Overhead Duration",
         description = "How long overhead text lasts. 30 cycles = 1 game tick (~0.6s).<br>Default: 100 (~3.3 ticks)",
         section = SECTION_OVERHEAD,
-        position = 303
+        position = 305
     )
     default int durationOverheadText() {
         return 100;
@@ -135,7 +159,7 @@ public interface DialogueConfig extends Config {
         name = "Truncate Overhead",
         description = "Truncate overhead text after X characters<br>Set to 0 to disable",
         section = SECTION_OVERHEAD,
-        position = 304
+        position = 306
     )
     default int truncateOverheadText() {
         return 0;
