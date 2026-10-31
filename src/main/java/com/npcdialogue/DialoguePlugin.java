@@ -69,36 +69,45 @@ public class DialoguePlugin extends Plugin {
                 chatboxService.addDialogMessage(dialogue);
             }
             if (config.displayOverheadNpcDialogue()) {
-                Actor actor = findActor(dialogue.getName());
+                NPC actor = findActor(dialogue.getName());
                 if (actor == null) {
                     log.debug("No valid actor found for NPC overhead dialogue, skipping overhead");
                     return;
                 }
+                lastInteractedActor = actor;
                 overheadService.setOverheadTextNpc(actor, dialogue);
             }
         }
     }
 
     /**
-     * Finds actor based on NPC name. To be used when dialogue is not started by interaction
-     * @return The found actor or the last interacted actor
+     * Finds NPC based on name, interaction and stored Actor
      */
-    private Actor findActor(String name) {
-        if (lastInteractedActor != null && name.equals(lastInteractedActor.getName())) {
-            return lastInteractedActor;
-        }
-
-        for (NPC npc : client.getTopLevelWorldView().npcs()) {
-            if (name.equals(npc.getName())) {
-                return npc;
+    private NPC findActor(String name) {
+        Actor interacting = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getInteracting();
+        if (interacting instanceof NPC) {
+            NPC interactingNpc = (NPC) interacting;
+            if (name.equals(interactingNpc.getName()) && interactingNpc.getId() != -1) {
+                return interactingNpc;
             }
         }
 
-        if (lastInteractedActor != null && lastInteractedActor.getId() != -1) {
-            log.debug("Unable to find matching actor. Fallback to using lastInteractedActor: {} ({})", lastInteractedActor.getName(), lastInteractedActor.getId());
+        if (lastInteractedActor != null && lastInteractedActor.getId() != -1 && name.equals(lastInteractedActor.getName())) {
             return lastInteractedActor;
         }
-        return null;
+
+        NPC matchingNpc = null;
+        for (NPC npc : client.getTopLevelWorldView().npcs()) {
+            if (npc.getId() != -1 && name.equals(npc.getName())) {
+                if (matchingNpc != null) {
+                    log.debug("Multiple NPCs named {} found; skipping overhead dialogue", name);
+                    return null;
+                }
+                matchingNpc = npc;
+            }
+        }
+
+        return matchingNpc;
     }
 
     @Subscribe
@@ -128,12 +137,29 @@ public class DialoguePlugin extends Plugin {
         processDialogue(new Dialogue(name.getText(), Text.sanitizeMultilineText(text.getText()), isPlayer ? Dialogue.Type.PLAYER : Dialogue.Type.NPC));
     }
 
-    /**
-     * Save NPCs the player interacts with to lastInteractedActor variable
-     */
+    @Subscribe
+    public void onMenuOptionClicked(MenuOptionClicked event) {
+        switch (event.getMenuAction()) {
+            case WIDGET_TARGET_ON_NPC:
+            case NPC_FIRST_OPTION:
+            case NPC_SECOND_OPTION:
+            case NPC_THIRD_OPTION:
+            case NPC_FOURTH_OPTION:
+            case NPC_FIFTH_OPTION:
+                NPC npc = event.getMenuEntry().getNpc();
+                if (npc != null) {
+                    lastInteractedActor = npc;
+                    log.debug("Selected actor: {} ({})", npc.getName(), npc.getId());
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     @Subscribe
     public void onInteractingChanged(InteractingChanged event) {
-        if (event.getTarget() == null || event.getSource() != client.getLocalPlayer()) {
+        if (event.getSource() != client.getLocalPlayer() || !(event.getTarget() instanceof NPC)) {
             return;
         }
 
