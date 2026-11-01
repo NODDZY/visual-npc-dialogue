@@ -2,6 +2,8 @@
 
 Visual NPC Dialogue shows NPC and Player dialogue overhead and in the chatbox.
 
+![Example GIF](https://raw.githubusercontent.com/NODDZY/visual-npc-dialogue/master/.github/assets/example.gif)
+
 ### Features
 
 - Toggle NPC / Player dialogue in the chatbox and overhead
@@ -16,5 +18,5 @@ Visual NPC Dialogue shows NPC and Player dialogue overhead and in the chatbox.
 
 Visual NPC Dialogue is an open-source plugin for [RuneLite](https://runelite.net/). It is distributed under the [BSD 2-Clause License](LICENSE).
 
-To install the plugin, open the RuneLite client and search for **Visual NPC Dialogue** in the Plugin Hub. \
+To install the plugin, open the RuneLite client and search for '**Visual NPC Dialogue**' in the Plugin Hub. \
 For more information about installing plugins, see the [RuneLite wiki](https://github.com/runelite/runelite/wiki/Information-about-the-Plugin-Hub).
